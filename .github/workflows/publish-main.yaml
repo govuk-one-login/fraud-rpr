@@ -17,7 +17,7 @@ jobs:
       packages: read
     with:
       environment: build
-      sam-template-file: template-rpt.yaml
+      sam-template-file: template-rpr.yaml
       region: ${{ vars.AWS_REGION }}
     secrets:
       aws-role-arn: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
@@ -41,7 +41,7 @@ jobs:
     with:
       region: ${{ vars.AWS_REGION }}
       stack-name-length: 24
-      stack-name-prefix: rpt
+      stack-name-prefix: rpr
     secrets:
       aws-role-arn: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
       sam-deployment-bucket: ${{ secrets.ARTIFACT_BUCKET_NAME }}
@@ -63,7 +63,7 @@ jobs:
     with:
       aws-region: ${{ vars.AWS_REGION }}
       release-number: ${{ vars.RELEASE_VERSION }}
-      sam-template-file: template-rpt.yaml
+      sam-template-file: template-rpr.yaml
     secrets:
       signing-profile-name: ${{ secrets.SIGNING_PROFILE_NAME }}
       aws-role-arn: ${{ secrets.GH_ACTIONS_ROLE_ARN  }}

@@ -14,7 +14,7 @@ jobs:
       packages: read
     with:
       environment: development
-      sam-template-file: template-rpt.yaml
+      sam-template-file: template-rpr.yaml
       region: ${{ vars.AWS_REGION }}
     secrets:
       aws-role-arn: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
@@ -29,7 +29,7 @@ jobs:
     with:
       region: ${{ vars.AWS_REGION }}
       stack-name-length: ${{ vars.STACK_NAME_LENGTH }}
-      stack-name-prefix: db-rpt
+      stack-name-prefix: db-rpr
     secrets:
       aws-role-arn: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
       sam-deployment-bucket: ${{ secrets.ARTIFACT_BUCKET_NAME }}
