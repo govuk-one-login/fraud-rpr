@@ -9,6 +9,7 @@
     "@babel/core": "^7.21.8",
     "@babel/plugin-proposal-decorators": "^7.21.0",
     "@babel/preset-env": "^7.21.5",
+    "@babel/preset-typescript": "^7.21.5",
     "@types/jest": "^29.5.5",
     "@types/node": "^20.4.6",
     "@types/uuid": "^9.0.2",
