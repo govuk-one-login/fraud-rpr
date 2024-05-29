@@ -12,6 +12,8 @@ Parameters:
       - development
       - build
       - staging
+      - integration
+      - production
   BranchName:
     Type: String
     Description: "Name of the branch to be deployed"
@@ -175,10 +177,12 @@ Resources:
     #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
     Type: AWS::Serverless::Function
     Properties:
+      Tracing: Active
       Environment:
         Variables:
           LAMBDA_NAME: ReceiverLambda
           VALIDATOR_QUEUE_URL: !Ref InboundEventValidatorQueue
+          ENVIRONMENT: !Sub ${Environment}
       FunctionName: !Sub ${Environment}-${AWS::StackName}-receiver
       Description: Function for receiving outbound messages from SSF to RP
       CodeUri: src/lambdas/receiver-lambda
