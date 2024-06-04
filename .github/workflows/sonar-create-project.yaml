@@ -1,0 +1,55 @@
+name: SonarCloud Create Project
+run-name: SonarCloud Create Project ${{ inputs.project_key }} (${{ inputs.visibility}}) in ${{ inputs.organization }}
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to run against"
+        type: environment
+        required: true
+      organization:
+        description: "SonarCloud Organization"
+        type: choice
+        required: true
+        default: "govuk-one-login"
+        options:
+          - "alphagov"
+          - "govuk-one-login"
+      visibility:
+        description: "Visibility of a project"
+        type: choice
+        required: true
+        default: "private"
+        options:
+          - "private"
+          - "public"
+      project_key:
+        description: "sonar projectKey i.e. di-devplatform-demo-sam-app"
+        type: string
+        required: true
+      project_name:
+        description: "sonar projectName i.e. di-devplatform-demo-sam-app"
+        type: string
+        required: true
+defaults:
+  run:
+    shell: bash
+jobs:
+  create-project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - run: |
+          scripts/create-sonar-project.sh $ORG $PROJECT_KEY $PROJECT_NAME $VISIBILITY
+        env:
+          SONAR_TOKEN: ${{ secrets.ADMIN_SONAR_TOKEN }}
+          ORG: ${{ inputs.organization }}
+          PROJECT_KEY: ${{ inputs.project_key }}
+          PROJECT_NAME: ${{ inputs.project_name }}
+          VISIBILITY: ${{ inputs.visibility }}
