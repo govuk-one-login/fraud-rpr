@@ -1,8 +1,1181 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Application for outbound messages to relying parties.
+  SAM Template for FID lambda functions and queues
 
 Parameters:
+  Environment:
+    Description: Name of Environment to deploy to
+    Type: String
+    Default: build
+    AllowedValues:
+      - development
+      - build
+      - staging
+      - integration
+      - production
+  CodeSigningConfigArn:
+    Type: String
+    Description: >
+      The ARN of the Code Signing Config to use, provided by the deployment pipeline
+    Default: 'none'
+  PermissionsBoundary:
+    Type: String
+    Description: >
+      The ARN of the permissions boundary to apply to any role created by the template
+    Default: 'none'
+  VpcStackName:
+    Type: 'String'
+    Description: 'The name of the stack that defines the VPC to use'
+  BranchName:
+    Type: String
+    Description: 'Name of the branch to be deployed'
+    Default: 'main'
+  DownloadTableName:
+    Type: 'String'
+    Description: 'Table name of the DynamoDB used for Download flow'
+    Default: 'download-table'
+
+Conditions:
+  OnMainBranch: !Or
+    - !Equals [!Ref BranchName, 'main']
+    - !Not [!Equals [!Ref Environment, development]]
+  isNotProduction: !Not [!Equals [!Ref Environment, 'production']]
+  ShouldMapApi: !And
+    - !Condition isNotProduction
+    - !Condition OnMainBranch
+
+  IsStagingIntegrationProdEnv: !Or
+    - !Equals [!Ref Environment, staging]
+    - !Equals [!Ref Environment, integration]
+    - !Equals [!Ref Environment, production]
+
+  UseCodeSigning:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref CodeSigningConfigArn
+          - 'none'
+
+  UsePermissionsBoundary:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref PermissionsBoundary
+          - 'none'
+
+  UseProvisionedConcurrency:
+    Fn::Not:
+      - Fn::Equals:
+          - !FindInMap [
+              ProvisionedConcurrency,
+              !Ref Environment,
+              ProvisionedConcurrencyInstances,
+            ]
+          - 0
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    CodeSigningConfigArn: !If
+      - UseCodeSigning
+      - !Ref CodeSigningConfigArn
+      - !Ref AWS::NoValue
+    PermissionsBoundary: !If
+      - UsePermissionsBoundary
+      - !Ref PermissionsBoundary
+      - !Ref AWS::NoValue
+    Timeout: 30
+    Tracing: Active
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        NEW_FORMAT_QUEUE_URL: !Ref NewStandardQueue
+        REFORMAT_QUEUE_URL: !Ref EventReformatQueue
+        LOG_LEVEL: INFO
+        POWERTOOLS_SERVICE_NAME: inboundSSF
+        POWERTOOLS_METRICS_NAMESPACE: !Sub ${Environment}-InboundSSF
+        AWS_LAMBDA_EXEC_WRAPPER: /opt/dynatrace
+        DT_CONNECTION_AUTH_TOKEN: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_AUTH_TOKEN}}'
+          - SecretArn:
+              !FindInMap [
+                EnvironmentConfiguration,
+                !Ref Environment,
+                dynatraceSecretArn,
+              ]
+        DT_CONNECTION_BASE_URL: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}'
+          - SecretArn:
+              !FindInMap [
+                EnvironmentConfiguration,
+                !Ref Environment,
+                dynatraceSecretArn,
+              ]
+        DT_CLUSTER_ID: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}'
+          - SecretArn:
+              !FindInMap [
+                EnvironmentConfiguration,
+                !Ref Environment,
+                dynatraceSecretArn,
+              ]
+        DT_LOG_COLLECTION_AUTH_TOKEN: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_LOG_COLLECTION_AUTH_TOKEN}}'
+          - SecretArn:
+              !FindInMap [
+                EnvironmentConfiguration,
+                !Ref Environment,
+                dynatraceSecretArn,
+              ]
+        DT_TENANT: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}'
+          - SecretArn:
+              !FindInMap [
+                EnvironmentConfiguration,
+                !Ref Environment,
+                dynatraceSecretArn,
+              ]
+        DT_OPEN_TELEMETRY_ENABLE_INTEGRATION: 'true'
+        AWS_XRAY_CONTEXT_MISSING: 'IGNORE_ERROR'
+    AutoPublishAlias: live
+    ProvisionedConcurrencyConfig:
+      Fn::If:
+        - UseProvisionedConcurrency
+        - ProvisionedConcurrentExecutions:
+            !FindInMap [
+              ProvisionedConcurrency,
+              !Ref Environment,
+              ProvisionedConcurrencyInstances,
+            ]
+        - !Ref 'AWS::NoValue'
+    Layers:
+      - !Sub
+        - '{{resolve:secretsmanager:${SecretArn}:SecretString:NODEJS_LAYER}}'
+        - SecretArn:
+            !FindInMap [
+              EnvironmentConfiguration,
+              !Ref Environment,
+              dynatraceSecretArn,
+            ]
+  Api:
+    OpenApiVersion: 3.0.1
+
+Mappings:
+  TxmaAccountIds:
+    Environment:
+      development: '604477301065' #di-fraud-ssf-dev account (TxMA Integration from Staging on)
+      build: '250353618339' #di-fraud-ssf-build account (TxMA Integration from Staging on)
+      staging: '178023842775'
+      integration: '729485541398'
+      production: '451773080033'
+  ProvisionedConcurrency:
+    production:
+      ProvisionedConcurrencyInstances: 0
+    staging:
+      ProvisionedConcurrencyInstances: 0
+    integration:
+      ProvisionedConcurrencyInstances: 0
+    build:
+      ProvisionedConcurrencyInstances: 0
+    development:
+      ProvisionedConcurrencyInstances: 0
+    local:
+      ProvisionedConcurrencyInstances: 0
+
+  PairwiseTableName:
+    Environment:
+      development: pairwise-mapping-table #Use our Mock Table for Dev and Build
+      build: pairwise-mapping-table #Use our Mock Table for Dev and Build
+      staging: 'rp-events-infra-staging-rp-pairwise-mapping-table'
+      integration: 'rp-events-infra-integration-rp-pairwise-mapping-table'
+      production: 'rp-events-infra-production-rp-pairwise-mapping-table'
+
+  PairwiseTableArns:
+    Environment:
+      development: 'arn:aws:iam::604477301065:role/rp-main-pairwise-table-role' #Use our Mock Table Role for Dev and Build
+      build: 'arn:aws:iam::250353618339:role/mock-rp-service-pairwise-table-role' #Use our Mock Table Role for Dev and Build
+      staging: 'arn:aws:iam::260140483106:role/rp-events-infra-pairwise-table-access-role'
+      integration: 'arn:aws:iam::168392494868:role/rp-events-infra-pairwise-table-access-role'
+      production: 'arn:aws:iam::552549398917:role/rp-events-infra-pairwise-table-access-role'
+
+  TxMAEndpointIds:
+    Environment:
+      development: 'vpce-00916e3aedca26ff4' # use test-functions for dev and build
+      build: 'vpce-0910f1ba3c1cd91b8' # use test-functions for dev and build
+      staging: 'vpce-06ff38b49fa5472c8'
+      integration: 'vpce-089dfc6fa150ecbc2'
+      production: 'vpce-0090dd77e847c9d77'
+
+  ##############################################################
+  # Dynatrace
+  ##############################################################
+
+  EnvironmentConfiguration:
+    development:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+    build:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+    staging:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+    integration:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+    production:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
 
 Resources:
+  ##############################################################
+  # Inbound Event API Gateway
+  ##############################################################
+  InboundEventApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${Environment}-${AWS::StackName}-inbound-event-receiver
+      Description: API Gateway for Inbound Events
+      StageName: !Ref Environment
+      EndpointConfiguration:
+        Type: REGIONAL
+      DisableExecuteApiEndpoint: !If [OnMainBranch, true, false]
+      TracingEnabled: true
+      CacheClusterEnabled: true
+      CacheClusterSize: '0.5'
+      MinimumCompressionSize: 0
+      AccessLogSetting:
+        DestinationArn: !GetAtt InboundEventApiLogs.Arn
+        Format: '{"sourceIpAddress": "$context.identity.sourceIp","requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          DataTraceEnabled: true
+          CachingEnabled: true
+          CacheDataEncrypted: true
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub '{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}'
+            Identity:
+              Header: Authorization
+            AuthType: 'COGNITO_USER_POOLS'
+            AuthorizationScopes:
+              - 'messages/write'
+        DefaultAuthorizer: CognitoAuthorizer
+        ResourcePolicy:
+          IpRangeWhitelist:
+            - '51.149.8.67'
+            - '51.149.8.107'
+            - '51.149.8.0/25'
+            - '217.196.229.77'
+            - '217.196.229.79'
+            - '217.196.229.80'
+            - '217.196.229.81'
+            - '51.149.8.0/25'
+            - '51.149.8.128/29'
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcStackName}-NatGatewayZoneAEIP
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcStackName}-NatGatewayZoneBEIP
+            - Fn::ImportValue:
+                Fn::Sub: ${VpcStackName}-NatGatewayZoneCEIP
+
+  InboundEventApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  InboundEventApiMapping:
+    Condition: ShouldMapApi
+    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Properties:
+      DomainName: !Sub '{{resolve:ssm:/${Environment}/ssf/domain}}'
+      ApiId: !Ref InboundEventApiGateway
+      Stage: !Ref InboundEventApiGateway.Stage
+
+  ##############################################################
+  # Outbound API Gateway
+  ##############################################################
+  OutboundEventApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${Environment}-${AWS::StackName}-outbound-event-receiver
+      Description: API Gateway for Outbound Events
+      StageName: !Ref Environment
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds:
+          - !FindInMap [TxMAEndpointIds, Environment, !Ref Environment]
+      TracingEnabled: true
+      CacheClusterEnabled: true
+      CacheClusterSize: '0.5'
+      MinimumCompressionSize: 0
+      AccessLogSetting:
+        DestinationArn: !GetAtt OutboundEventApiLogs.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          DataTraceEnabled: true
+          CachingEnabled: true
+          CacheDataEncrypted: true
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: '*'
+              Action: execute-api:Invoke
+              Resource:
+                - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*'
+              Condition:
+                StringEquals:
+                  'aws:SourceVpce':
+                    !FindInMap [TxMAEndpointIds, Environment, !Ref Environment]
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub '{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}'
+            Identity:
+              Header: Authorization
+            AuthType: 'COGNITO_USER_POOLS'
+            AuthorizationScopes:
+              - 'messages/write'
+        DefaultAuthorizer: CognitoAuthorizer
+
+  OutboundEventApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Inbound Event Receiver Lambda
+  ##############################################################
+  InboundEventReceiverFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: InboundReceiverLambda
+          VALIDATOR_QUEUE_URL: !Ref InboundEventValidatorQueue
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-inbound-event-receiver
+      Description: Inbound Event Receiver Lambda
+      CodeUri: src/lambdas/receiver-function
+      Handler: handler.handler
+      MemorySize: 128
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 10
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        InboundApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InboundEventApiGateway
+            Path: /
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - messages/write
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt InboundEventValidatorQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  PermissionForInboundAPItoCallEventReceiverFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InboundEventReceiverFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InboundEventApiGateway}/*/*/*'
+
+  InboundReceiverLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${InboundEventReceiverFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Inbound Validate Queue
+  ##############################################################
+  InboundEventValidatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt InboundValidatorDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Outbound Event Receiver Lambda
+  ##############################################################
+  OutboundEventReceiverFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: OutboundReceiverLambda
+          VALIDATOR_QUEUE_URL: !Ref OutboundEventValidatorQueue
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-outbound-event-receiver
+      Description: Outbound Event Receiver Lambda
+      CodeUri: src/lambdas/receiver-function
+      Handler: handler.handler
+      MemorySize: 128
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 10
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        OutboundApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+            RestApiId: !Ref OutboundEventApiGateway
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OutboundEventValidatorQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  PermissionForOutboundAPItoCallEventReceiverFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OutboundEventReceiverFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OutboundEventApiGateway}/*/*/*'
+
+  OutboundReceiverLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${OutboundEventReceiverFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Outbound Validate Queue
+  ##############################################################
+  OutboundEventValidatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt OutboundValidatorDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Inbound Validate Lambda
+  ##############################################################
+  InboundEventValidatorFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: InboundValidatorLambda
+          SUCCESS_QUEUE_URL: !Ref EventRemapQueue
+          USER_TABLE_NAME: api-user-table
+          SHOULD_VERIFY: true
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-inbound-event-validator
+      Description: Inbound Event Validator Lambda
+      CodeUri: src/lambdas/validator-function
+      Handler: handler.handler
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        InboundValidatorQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt InboundEventValidatorQueue.Arn
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EventRemapQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue: ApiUserTableName
+        - KMSEncryptPolicy:
+            KeyId:
+              Fn::ImportValue: ApiUserTableKeyId
+        - KMSDecryptPolicy:
+            KeyId:
+              Fn::ImportValue: ApiUserTableKeyId
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  InboundValidatorLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${InboundEventValidatorFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Outbound Validate Lambda
+  ##############################################################
+  OutboundEventValidatorFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: OutboundValidatorLambda
+          SUCCESS_QUEUE_URL: !Ref DownloadQueue
+          SHOULD_VERIFY: false
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-Outbound-event-validator
+      Description: Outbound Event Validator Lambda
+      CodeUri: src/lambdas/validator-function
+      Handler: handler.handler
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        OutboundValidatorQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OutboundEventValidatorQueue.Arn
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt DownloadQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  OutboundValidatorLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${OutboundEventValidatorFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Inbound Validator Dead Letter Queue
+  ##############################################################
+  InboundValidatorDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
+  # Outbound Validator Dead Letter Queue
+  ##############################################################
+  OutboundValidatorDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
+  # Remap Queue
+  ##############################################################
+  EventRemapQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RemapDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Download Queue
+  ##############################################################
+  DownloadQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DownloadDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Remap Lambda
+  ##############################################################
+  EventRemapFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: RemapLambda
+          PAIRWISE_TABLE_NAME:
+            !FindInMap [PairwiseTableName, Environment, !Ref Environment]
+          PAIRWISE_TABLE_ROLE:
+            !FindInMap [PairwiseTableArns, Environment, !Ref Environment]
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-event-remap
+      Description: Event Remapping Lambda
+      CodeUri: src/lambdas/remap-function
+      Handler: handler.handler
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        RemapQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventRemapQueue.Arn
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EventReformatQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermisions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
+        - Statement:
+            Sid: assumeTxmaRole
+            Effect: Allow
+            Resource:
+              !FindInMap [PairwiseTableArns, Environment, !Ref Environment]
+            Action:
+              - sts:AssumeRole
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  RemapLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${EventRemapFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Remap Dead Letter Queue
+  ##############################################################
+  RemapDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
+  # Download Dead Letter Queue
+  ##############################################################
+  DownloadDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
+  # Reformat Queue
+  ##############################################################
+  EventReformatQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ReformatDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Reformat Lambda
+  ##############################################################
+  EventReformatFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: ReformatLambda
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-event-reformat
+      Description: Event Reformatting Lambda
+      CodeUri: src/lambdas/reformat-function
+      Handler: handler.handler
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        ReformatQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventReformatQueue.Arn
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt NewStandardQueue.QueueName
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - kms:Decrypt
+              - kms:Encrypt
+            Resource: !GetAtt TxmaQueueKey.Arn
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - kms:Decrypt
+            Resource: !GetAtt QueueKeyStore.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  ReformatLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${EventReformatFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Reformat Dead Letter Queue
+  ##############################################################
+  ReformatDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
+  # New Standard Queue
+  ##############################################################
+  NewStandardQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref TxmaQueueKey
+      RedriveAllowPolicy:
+        redrivePermission: denyAll
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt TxmaDeadLetterQueue.Arn
+        maxReceiveCount: 10
+      MessageRetentionPeriod: !If
+        - IsStagingIntegrationProdEnv
+        - 1209600
+        - 60
+      VisibilityTimeout: !If
+        - IsStagingIntegrationProdEnv
+        - 360
+        - 0
+
+  ##############################################################
+  # Encryption Keys
+  ##############################################################
+  QueueKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Queues
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  LogKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Logs
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action: 'kms:*'
+            Resource: '*'
+
+  LambdaKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Lambda Variables
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  SecretsManagerKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for secrets manager secrets
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  ##############################################################
+  # TxMA Integration
+  ##############################################################
+  TxmaDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref TxmaQueueKey
+
+  TxmaQueueKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key New Standard Queue, used by TxMA
+      EnableKeyRotation: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              AWS: !FindInMap [TxmaAccountIds, Environment, !Ref Environment]
+            Action:
+              - 'kms:decrypt'
+            Resource: '*'
+
+  TxmaQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'ReadByTxma'
+            Effect: Allow
+            Action:
+              - 'sqs:ReceiveMessage'
+              - 'sqs:DeleteMessage'
+              - 'sqs:GetQueueAttributes'
+              - 'sqs:ChangeMessageVisibility'
+            Resource: !GetAtt NewStandardQueue.Arn
+            Principal:
+              AWS: !FindInMap [TxmaAccountIds, Environment, !Ref Environment]
+      Queues:
+        - !Ref NewStandardQueue
+
+  ##############################################################
+  # Outbound Store Lambda
+  ##############################################################
+  OutboundStoreFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          LAMBDA_NAME: Outbound Store Lambda
+          DYNAMODB_TABLE_NAME: !Sub '${AWS::StackName}-${DownloadTableName}'
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-outbound-store
+      Description: TxMA Outbound Store
+      CodeUri: src/lambdas/outbound-store-function
+      Handler: handler.handler
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Events:
+        ValidatorQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DownloadQueue.Arn
+      Policies:
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+              - kms:Decrypt
+            Resource: !GetAtt QueueKeyStore.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - dynamodb:BatchWriteItem
+            Resource: !GetAtt DownloadTable.Arn
+        - KMSDecryptPolicy:
+            KeyId: !Ref DownloadTableKeyStore
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: 'es2020'
+        EntryPoints:
+          - handler.ts
+
+  DownloadReceiverLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${OutboundStoreFunction}'
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  DownloadTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-${DownloadTableName}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: aud
+          AttributeType: S
+        - AttributeName: event.type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: aud
+          KeyType: HASH
+        - AttributeName: id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: events
+          KeySchema:
+            - AttributeName: aud
+              KeyType: HASH
+            - AttributeName: event.type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: KEYS_ONLY
+      LocalSecondaryIndexes:
+        - IndexName: rp-events
+          KeySchema:
+            - AttributeName: aud
+              KeyType: HASH
+            - AttributeName: event.type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: KEYS_ONLY
+      TimeToLiveSpecification:
+        AttributeName: expires
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DownloadTableKeyStore
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  DownloadTableKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Download DynamoDB Table
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+  ##############################################################
+  # WAF WebACL
+  ##############################################################
+  FraudSsfWaf:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      DefaultAction:
+        Allow: {}
+      Scope: 'REGIONAL'
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: 'ssf-waf-metric'
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: AWS-AWMManagedRuleCommonRuleSet
+          OverrideAction:
+            None: {}
+          Priority: 20
+          Statement:
+            ManagedRuleGroupStatement:
+              Name: AWSManagedRulesCommonRuleSet
+              VendorName: AWS
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: TRUE
+            MetricName: !Sub '${AWS::StackName}-AWSCRS-hits'
+            SampledRequestsEnabled: FALSE
+        - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 30
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: TRUE
+            MetricName: !Sub '${AWS::StackName}-AWSKBI-hits'
+            SampledRequestsEnabled: FALSE
+
+  ##############################################################
+  # WebACL Associations
+  ##############################################################
+  WebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Sub
+        - 'arn:aws:apigateway:${AWS::Region}::/restapis/${InboundEventApiGateway}/stages/${ApiStage}'
+        - ApiStage: !Ref InboundEventApiGateway.Stage
+      WebACLArn: !GetAtt FraudSsfWaf.Arn
+
+Outputs:
+  RemapQueueName:
+    Description: Name of the Remap Queue Resource
+    Value: !GetAtt EventRemapQueue.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}-RemapQueueName'
+
+  RemapQueueUrl:
+    Description: Url of the Remap Queue Resource
+    Value: !GetAtt EventRemapQueue.QueueUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-RemapQueueUrl'
+
+  QueueKeyArn:
+    Description: Arn of the KMS Queue Key
+    Value: !GetAtt QueueKeyStore.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-QueueKeyArn'
+
+  DownloadTableKeyArn:
+    Description: Arn of the KMS Download Key
+    Value: !GetAtt DownloadTableKeyStore.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DownloadTableKeyArn'
