@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   SAM Template for FID lambda functions and queues
@@ -18,29 +18,29 @@ Parameters:
     Type: String
     Description: >
       The ARN of the Code Signing Config to use, provided by the deployment pipeline
-    Default: 'none'
+    Default: "none"
   PermissionsBoundary:
     Type: String
     Description: >
       The ARN of the permissions boundary to apply to any role created by the template
-    Default: 'none'
+    Default: "none"
   VpcStackName:
-    Type: 'String'
-    Description: 'The name of the stack that defines the VPC to use'
+    Type: "String"
+    Description: "The name of the stack that defines the VPC to use"
   BranchName:
     Type: String
-    Description: 'Name of the branch to be deployed'
-    Default: 'main'
+    Description: "Name of the branch to be deployed"
+    Default: "main"
   DownloadTableName:
-    Type: 'String'
-    Description: 'Table name of the DynamoDB used for Download flow'
-    Default: 'download-table'
+    Type: "String"
+    Description: "Table name of the DynamoDB used for Download flow"
+    Default: "download-table"
 
 Conditions:
   OnMainBranch: !Or
-    - !Equals [!Ref BranchName, 'main']
+    - !Equals [!Ref BranchName, "main"]
     - !Not [!Equals [!Ref Environment, development]]
-  isNotProduction: !Not [!Equals [!Ref Environment, 'production']]
+  isNotProduction: !Not [!Equals [!Ref Environment, "production"]]
   ShouldMapApi: !And
     - !Condition isNotProduction
     - !Condition OnMainBranch
@@ -54,13 +54,13 @@ Conditions:
     Fn::Not:
       - Fn::Equals:
           - !Ref CodeSigningConfigArn
-          - 'none'
+          - "none"
 
   UsePermissionsBoundary:
     Fn::Not:
       - Fn::Equals:
           - !Ref PermissionsBoundary
-          - 'none'
+          - "none"
 
   UseProvisionedConcurrency:
     Fn::Not:
@@ -96,7 +96,7 @@ Globals:
         POWERTOOLS_METRICS_NAMESPACE: !Sub ${Environment}-InboundSSF
         AWS_LAMBDA_EXEC_WRAPPER: /opt/dynatrace
         DT_CONNECTION_AUTH_TOKEN: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_AUTH_TOKEN}}'
+          - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_AUTH_TOKEN}}"
           - SecretArn:
               !FindInMap [
                 EnvironmentConfiguration,
@@ -104,7 +104,7 @@ Globals:
                 dynatraceSecretArn,
               ]
         DT_CONNECTION_BASE_URL: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}'
+          - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}"
           - SecretArn:
               !FindInMap [
                 EnvironmentConfiguration,
@@ -112,7 +112,7 @@ Globals:
                 dynatraceSecretArn,
               ]
         DT_CLUSTER_ID: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}'
+          - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}"
           - SecretArn:
               !FindInMap [
                 EnvironmentConfiguration,
@@ -120,7 +120,7 @@ Globals:
                 dynatraceSecretArn,
               ]
         DT_LOG_COLLECTION_AUTH_TOKEN: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_LOG_COLLECTION_AUTH_TOKEN}}'
+          - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_LOG_COLLECTION_AUTH_TOKEN}}"
           - SecretArn:
               !FindInMap [
                 EnvironmentConfiguration,
@@ -128,15 +128,15 @@ Globals:
                 dynatraceSecretArn,
               ]
         DT_TENANT: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}'
+          - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}"
           - SecretArn:
               !FindInMap [
                 EnvironmentConfiguration,
                 !Ref Environment,
                 dynatraceSecretArn,
               ]
-        DT_OPEN_TELEMETRY_ENABLE_INTEGRATION: 'true'
-        AWS_XRAY_CONTEXT_MISSING: 'IGNORE_ERROR'
+        DT_OPEN_TELEMETRY_ENABLE_INTEGRATION: "true"
+        AWS_XRAY_CONTEXT_MISSING: "IGNORE_ERROR"
     AutoPublishAlias: live
     ProvisionedConcurrencyConfig:
       Fn::If:
@@ -147,10 +147,10 @@ Globals:
               !Ref Environment,
               ProvisionedConcurrencyInstances,
             ]
-        - !Ref 'AWS::NoValue'
+        - !Ref "AWS::NoValue"
     Layers:
       - !Sub
-        - '{{resolve:secretsmanager:${SecretArn}:SecretString:NODEJS_LAYER}}'
+        - "{{resolve:secretsmanager:${SecretArn}:SecretString:NODEJS_LAYER}}"
         - SecretArn:
             !FindInMap [
               EnvironmentConfiguration,
@@ -163,11 +163,11 @@ Globals:
 Mappings:
   TxmaAccountIds:
     Environment:
-      development: '604477301065' #di-fraud-ssf-dev account (TxMA Integration from Staging on)
-      build: '250353618339' #di-fraud-ssf-build account (TxMA Integration from Staging on)
-      staging: '178023842775'
-      integration: '729485541398'
-      production: '451773080033'
+      development: "604477301065" #di-fraud-ssf-dev account (TxMA Integration from Staging on)
+      build: "250353618339" #di-fraud-ssf-build account (TxMA Integration from Staging on)
+      staging: "178023842775"
+      integration: "729485541398"
+      production: "451773080033"
   ProvisionedConcurrency:
     production:
       ProvisionedConcurrencyInstances: 0
@@ -186,25 +186,25 @@ Mappings:
     Environment:
       development: pairwise-mapping-table #Use our Mock Table for Dev and Build
       build: pairwise-mapping-table #Use our Mock Table for Dev and Build
-      staging: 'rp-events-infra-staging-rp-pairwise-mapping-table'
-      integration: 'rp-events-infra-integration-rp-pairwise-mapping-table'
-      production: 'rp-events-infra-production-rp-pairwise-mapping-table'
+      staging: "rp-events-infra-staging-rp-pairwise-mapping-table"
+      integration: "rp-events-infra-integration-rp-pairwise-mapping-table"
+      production: "rp-events-infra-production-rp-pairwise-mapping-table"
 
   PairwiseTableArns:
     Environment:
-      development: 'arn:aws:iam::604477301065:role/rp-main-pairwise-table-role' #Use our Mock Table Role for Dev and Build
-      build: 'arn:aws:iam::250353618339:role/mock-rp-service-pairwise-table-role' #Use our Mock Table Role for Dev and Build
-      staging: 'arn:aws:iam::260140483106:role/rp-events-infra-pairwise-table-access-role'
-      integration: 'arn:aws:iam::168392494868:role/rp-events-infra-pairwise-table-access-role'
-      production: 'arn:aws:iam::552549398917:role/rp-events-infra-pairwise-table-access-role'
+      development: "arn:aws:iam::604477301065:role/rp-main-pairwise-table-role" #Use our Mock Table Role for Dev and Build
+      build: "arn:aws:iam::250353618339:role/mock-rp-service-pairwise-table-role" #Use our Mock Table Role for Dev and Build
+      staging: "arn:aws:iam::260140483106:role/rp-events-infra-pairwise-table-access-role"
+      integration: "arn:aws:iam::168392494868:role/rp-events-infra-pairwise-table-access-role"
+      production: "arn:aws:iam::552549398917:role/rp-events-infra-pairwise-table-access-role"
 
   TxMAEndpointIds:
     Environment:
-      development: 'vpce-00916e3aedca26ff4' # use test-functions for dev and build
-      build: 'vpce-0910f1ba3c1cd91b8' # use test-functions for dev and build
-      staging: 'vpce-06ff38b49fa5472c8'
-      integration: 'vpce-089dfc6fa150ecbc2'
-      production: 'vpce-0090dd77e847c9d77'
+      development: "vpce-00916e3aedca26ff4" # use test-functions for dev and build
+      build: "vpce-0910f1ba3c1cd91b8" # use test-functions for dev and build
+      staging: "vpce-06ff38b49fa5472c8"
+      integration: "vpce-089dfc6fa150ecbc2"
+      production: "vpce-0090dd77e847c9d77"
 
   ##############################################################
   # Dynatrace
@@ -237,14 +237,14 @@ Resources:
       DisableExecuteApiEndpoint: !If [OnMainBranch, true, false]
       TracingEnabled: true
       CacheClusterEnabled: true
-      CacheClusterSize: '0.5'
+      CacheClusterSize: "0.5"
       MinimumCompressionSize: 0
       AccessLogSetting:
         DestinationArn: !GetAtt InboundEventApiLogs.Arn
         Format: '{"sourceIpAddress": "$context.identity.sourceIp","requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
       MethodSettings:
         - ResourcePath: /*
-          HttpMethod: '*'
+          HttpMethod: "*"
           LoggingLevel: INFO
           MetricsEnabled: true
           DataTraceEnabled: true
@@ -253,24 +253,24 @@ Resources:
       Auth:
         Authorizers:
           CognitoAuthorizer:
-            UserPoolArn: !Sub '{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}'
+            UserPoolArn: !Sub "{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}"
             Identity:
               Header: Authorization
-            AuthType: 'COGNITO_USER_POOLS'
+            AuthType: "COGNITO_USER_POOLS"
             AuthorizationScopes:
-              - 'messages/write'
+              - "messages/write"
         DefaultAuthorizer: CognitoAuthorizer
         ResourcePolicy:
           IpRangeWhitelist:
-            - '51.149.8.67'
-            - '51.149.8.107'
-            - '51.149.8.0/25'
-            - '217.196.229.77'
-            - '217.196.229.79'
-            - '217.196.229.80'
-            - '217.196.229.81'
-            - '51.149.8.0/25'
-            - '51.149.8.128/29'
+            - "51.149.8.67"
+            - "51.149.8.107"
+            - "51.149.8.0/25"
+            - "217.196.229.77"
+            - "217.196.229.79"
+            - "217.196.229.80"
+            - "217.196.229.81"
+            - "51.149.8.0/25"
+            - "51.149.8.128/29"
             - Fn::ImportValue:
                 Fn::Sub: ${VpcStackName}-NatGatewayZoneAEIP
             - Fn::ImportValue:
@@ -286,9 +286,9 @@ Resources:
 
   InboundEventApiMapping:
     Condition: ShouldMapApi
-    Type: 'AWS::ApiGatewayV2::ApiMapping'
+    Type: "AWS::ApiGatewayV2::ApiMapping"
     Properties:
-      DomainName: !Sub '{{resolve:ssm:/${Environment}/ssf/domain}}'
+      DomainName: !Sub "{{resolve:ssm:/${Environment}/ssf/domain}}"
       ApiId: !Ref InboundEventApiGateway
       Stage: !Ref InboundEventApiGateway.Stage
 
@@ -307,14 +307,14 @@ Resources:
           - !FindInMap [TxMAEndpointIds, Environment, !Ref Environment]
       TracingEnabled: true
       CacheClusterEnabled: true
-      CacheClusterSize: '0.5'
+      CacheClusterSize: "0.5"
       MinimumCompressionSize: 0
       AccessLogSetting:
         DestinationArn: !GetAtt OutboundEventApiLogs.Arn
         Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
       MethodSettings:
         - ResourcePath: /*
-          HttpMethod: '*'
+          HttpMethod: "*"
           LoggingLevel: INFO
           MetricsEnabled: true
           DataTraceEnabled: true
@@ -324,22 +324,22 @@ Resources:
         ResourcePolicy:
           CustomStatements:
             - Effect: Allow
-              Principal: '*'
+              Principal: "*"
               Action: execute-api:Invoke
               Resource:
-                - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*'
+                - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*"
               Condition:
                 StringEquals:
-                  'aws:SourceVpce':
+                  "aws:SourceVpce":
                     !FindInMap [TxMAEndpointIds, Environment, !Ref Environment]
         Authorizers:
           CognitoAuthorizer:
-            UserPoolArn: !Sub '{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}'
+            UserPoolArn: !Sub "{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}"
             Identity:
               Header: Authorization
-            AuthType: 'COGNITO_USER_POOLS'
+            AuthType: "COGNITO_USER_POOLS"
             AuthorizationScopes:
-              - 'messages/write'
+              - "messages/write"
         DefaultAuthorizer: CognitoAuthorizer
 
   OutboundEventApiLogs:
@@ -402,7 +402,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
@@ -412,12 +412,12 @@ Resources:
       FunctionName: !Ref InboundEventReceiverFunction
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InboundEventApiGateway}/*/*/*'
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InboundEventApiGateway}/*/*/*"
 
   InboundReceiverLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${InboundEventReceiverFunction}'
+      LogGroupName: !Sub "/aws/lambda/${InboundEventReceiverFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -482,7 +482,7 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
@@ -492,12 +492,12 @@ Resources:
       FunctionName: !Ref OutboundEventReceiverFunction
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OutboundEventApiGateway}/*/*/*'
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OutboundEventApiGateway}/*/*/*"
 
   OutboundReceiverLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${OutboundEventReceiverFunction}'
+      LogGroupName: !Sub "/aws/lambda/${OutboundEventReceiverFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -572,14 +572,14 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
   InboundValidatorLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${InboundEventValidatorFunction}'
+      LogGroupName: !Sub "/aws/lambda/${InboundEventValidatorFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -633,14 +633,14 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
   OutboundValidatorLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${OutboundEventValidatorFunction}'
+      LogGroupName: !Sub "/aws/lambda/${OutboundEventValidatorFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -741,14 +741,14 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
   RemapLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${EventRemapFunction}'
+      LogGroupName: !Sub "/aws/lambda/${EventRemapFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -832,14 +832,14 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
   ReformatLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${EventReformatFunction}'
+      LogGroupName: !Sub "/aws/lambda/${EventReformatFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
@@ -881,13 +881,13 @@ Resources:
       Description: Encryption key for Queues
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
 
   LogKeyStore:
     Type: AWS::KMS::Key
@@ -895,18 +895,18 @@ Resources:
       Description: Encryption key for Logs
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
           - Effect: Allow
             Principal:
-              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
-            Action: 'kms:*'
-            Resource: '*'
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action: "kms:*"
+            Resource: "*"
 
   LambdaKeyStore:
     Type: AWS::KMS::Key
@@ -914,13 +914,13 @@ Resources:
       Description: Encryption key for Lambda Variables
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
 
   SecretsManagerKeyStore:
     Type: AWS::KMS::Key
@@ -928,13 +928,13 @@ Resources:
       Description: Encryption key for secrets manager secrets
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
 
   ##############################################################
   # TxMA Integration
@@ -951,33 +951,33 @@ Resources:
       EnableKeyRotation: true
       KeySpec: SYMMETRIC_DEFAULT
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
           - Effect: Allow
             Principal:
               AWS: !FindInMap [TxmaAccountIds, Environment, !Ref Environment]
             Action:
-              - 'kms:decrypt'
-            Resource: '*'
+              - "kms:decrypt"
+            Resource: "*"
 
   TxmaQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Sid: 'ReadByTxma'
+          - Sid: "ReadByTxma"
             Effect: Allow
             Action:
-              - 'sqs:ReceiveMessage'
-              - 'sqs:DeleteMessage'
-              - 'sqs:GetQueueAttributes'
-              - 'sqs:ChangeMessageVisibility'
+              - "sqs:ReceiveMessage"
+              - "sqs:DeleteMessage"
+              - "sqs:GetQueueAttributes"
+              - "sqs:ChangeMessageVisibility"
             Resource: !GetAtt NewStandardQueue.Arn
             Principal:
               AWS: !FindInMap [TxmaAccountIds, Environment, !Ref Environment]
@@ -994,7 +994,7 @@ Resources:
       Environment:
         Variables:
           LAMBDA_NAME: Outbound Store Lambda
-          DYNAMODB_TABLE_NAME: !Sub '${AWS::StackName}-${DownloadTableName}'
+          DYNAMODB_TABLE_NAME: !Sub "${AWS::StackName}-${DownloadTableName}"
       FunctionName: !Sub ${Environment}-${AWS::StackName}-outbound-store
       Description: TxMA Outbound Store
       CodeUri: src/lambdas/outbound-store-function
@@ -1035,21 +1035,21 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         Minify: false
-        Target: 'es2020'
+        Target: "es2020"
         EntryPoints:
           - handler.ts
 
   DownloadReceiverLambdaLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${OutboundStoreFunction}'
+      LogGroupName: !Sub "/aws/lambda/${OutboundStoreFunction}"
       KmsKeyId: !GetAtt LogKeyStore.Arn
       RetentionInDays: 30
 
   DownloadTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-${DownloadTableName}'
+      TableName: !Sub "${AWS::StackName}-${DownloadTableName}"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
@@ -1097,13 +1097,13 @@ Resources:
       Description: Encryption key for Download DynamoDB Table
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
 
   ##############################################################
   # WAF WebACL
@@ -1113,10 +1113,10 @@ Resources:
     Properties:
       DefaultAction:
         Allow: {}
-      Scope: 'REGIONAL'
+      Scope: "REGIONAL"
       VisibilityConfig:
         CloudWatchMetricsEnabled: true
-        MetricName: 'ssf-waf-metric'
+        MetricName: "ssf-waf-metric"
         SampledRequestsEnabled: true
       Rules:
         - Name: AWS-AWMManagedRuleCommonRuleSet
@@ -1129,7 +1129,7 @@ Resources:
               VendorName: AWS
           VisibilityConfig:
             CloudWatchMetricsEnabled: TRUE
-            MetricName: !Sub '${AWS::StackName}-AWSCRS-hits'
+            MetricName: !Sub "${AWS::StackName}-AWSCRS-hits"
             SampledRequestsEnabled: FALSE
         - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
           Priority: 30
@@ -1141,7 +1141,7 @@ Resources:
               Name: AWSManagedRulesKnownBadInputsRuleSet
           VisibilityConfig:
             CloudWatchMetricsEnabled: TRUE
-            MetricName: !Sub '${AWS::StackName}-AWSKBI-hits'
+            MetricName: !Sub "${AWS::StackName}-AWSKBI-hits"
             SampledRequestsEnabled: FALSE
 
   ##############################################################
@@ -1151,7 +1151,7 @@ Resources:
     Type: AWS::WAFv2::WebACLAssociation
     Properties:
       ResourceArn: !Sub
-        - 'arn:aws:apigateway:${AWS::Region}::/restapis/${InboundEventApiGateway}/stages/${ApiStage}'
+        - "arn:aws:apigateway:${AWS::Region}::/restapis/${InboundEventApiGateway}/stages/${ApiStage}"
         - ApiStage: !Ref InboundEventApiGateway.Stage
       WebACLArn: !GetAtt FraudSsfWaf.Arn
 
@@ -1160,22 +1160,22 @@ Outputs:
     Description: Name of the Remap Queue Resource
     Value: !GetAtt EventRemapQueue.QueueName
     Export:
-      Name: !Sub '${AWS::StackName}-RemapQueueName'
+      Name: !Sub "${AWS::StackName}-RemapQueueName"
 
   RemapQueueUrl:
     Description: Url of the Remap Queue Resource
     Value: !GetAtt EventRemapQueue.QueueUrl
     Export:
-      Name: !Sub '${AWS::StackName}-RemapQueueUrl'
+      Name: !Sub "${AWS::StackName}-RemapQueueUrl"
 
   QueueKeyArn:
     Description: Arn of the KMS Queue Key
     Value: !GetAtt QueueKeyStore.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-QueueKeyArn'
+      Name: !Sub "${AWS::StackName}-QueueKeyArn"
 
   DownloadTableKeyArn:
     Description: Arn of the KMS Download Key
     Value: !GetAtt DownloadTableKeyStore.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-DownloadTableKeyArn'
+      Name: !Sub "${AWS::StackName}-DownloadTableKeyArn"
