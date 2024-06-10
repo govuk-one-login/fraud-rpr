@@ -37,9 +37,9 @@
     "typescript": "^5.0.4"
   },
   "jest": {
-   "transformIgnorePatterns": [
-    "node_modules/(?!@govuk-one-login"
-   ]
+    "transformIgnorePatterns": [
+      "node_modules/(?!@govuk-one-login"
+    ]
   },
   "license": "MIT",
   "name": "fpad_stack",
@@ -48,7 +48,6 @@
     "format": "npx prettier --write .",
     "predeploy": "sam build",
     "test": "jest --coverage",
-    "validate": "sam validate -t template-rpr.yaml",
     "validate:lint": "npm run validate -- --lint"
   },
   "version": "1.0.0",
