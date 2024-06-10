@@ -48,6 +48,7 @@
     "format": "npx prettier --write .",
     "predeploy": "sam build",
     "test": "jest --passWithNoTests",
+    "validate": "sam validate -t template-rpr.yaml",
     "validate:lint": "npm run validate -- --lint"
   },
   "version": "1.0.0",
