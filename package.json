@@ -47,8 +47,7 @@
     "deploy": "sam deploy",
     "format": "npx prettier --write .",
     "predeploy": "sam build",
-    "test": "jest --coverage",
-    "test-without-failing-on-no-tests": "jest --passWithNoTests",
+    "test": "jest --passWithNoTests",
     "validate:lint": "npm run validate -- --lint"
   },
   "version": "1.0.0",
