@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Application for outbound messages for relying parties
+
+Parameters:
+  Environment:
+    Description: Name of Environment to deploy to
+    Type: String
+    Default: build
+    AllowedValues:
+      - development
+      - build
+      - staging
+  CodeSigningConfigArn:
+    Type: String
+    Description: >
+      The ARN of the Code Signing Config to use, provided by the deployment pipeline
+    Default: "none"
+  PermissionsBoundary:
+    Type: String
+    Description: >
+      The ARN of the permissions boundary to apply to any role created by the template
+    Default: "none"
+  VpcStackName:
+    Type: "String"
+    Description: "The name of the stack that defines the VPC to use"
+  BranchName:
+    Type: String
+    Description: "Name of the branch to be deployed"
+    Default: "main"
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    CodeSigningConfigArn: !If
+      - UseCodeSigning
+      - !Ref CodeSigningConfigArn
+      - !Ref AWS::NoValue
+    PermissionsBoundary: !If
+      - UsePermissionsBoundary
+      - !Ref PermissionsBoundary
+      - !Ref AWS::NoValue
+    Timeout: 30
+    Tracing: Active
+    Architectures:
+      - arm64
+
+Resources:
