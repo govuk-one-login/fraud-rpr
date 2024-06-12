@@ -7,7 +7,7 @@ version = 0.1
 region = 'eu-west-2'
 
 [default.build.parameters]
-template_file = 'template-inbound-ssf.yaml'
+template_file = 'template-rpr.yaml'
 
 [default.deploy.parameters]
 capabilities = 'CAPABILITY_NAMED_IAM'

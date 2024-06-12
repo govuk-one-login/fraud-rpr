@@ -49,7 +49,9 @@ class ReceiverLambda implements LambdaInterface {
         };
       }
       this.fraudLogger.logStartedProcessing();
-      RequestValidation.validateInboundEvent(event.body);
+      RequestValidation.validateInboundEvent(
+        event.body,
+      ); /**validates the incoming request to ensure it has the required body */
 
       const newMessage: SendMessageCommandOutput = await sendSqsMessage(
         JSON.stringify({
