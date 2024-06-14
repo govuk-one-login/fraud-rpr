@@ -66,6 +66,12 @@ Resources:
       MemorySize: 128
       KmsKeyArn: !GetAtt LambdaKeyStore.Ar
       ReservedConcurrentExecutions: 10
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
