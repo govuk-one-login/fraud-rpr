@@ -64,6 +64,7 @@ Resources:
       CodeUri: src/lambdas/receiver-lambda
       Handler: handler.handler
       MemorySize: 128
+      KmsKeyArn: !GetAtt LambdaKeyStore.Ar
       ReservedConcurrentExecutions: 10
     Metadata:
       BuildMethod: esbuild
@@ -72,3 +73,20 @@ Resources:
         Target: "es2020"
         EntryPoints:
           - handler.ts
+
+  ##############################################################
+  # Encryption Keys
+  ##############################################################
+  LambdaKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Lambdas Variables
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
