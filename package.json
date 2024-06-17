@@ -37,8 +37,11 @@
     "typescript": "^5.0.4"
   },
   "jest": {
-    "transformIgnorePatterns": [
-      "node_modules/(?!@govuk-one-login"
+    "coveragePathIgnorePatterns": [
+      "src/common/enums"
+    ],
+    "testPathIgnorePatterns": [
+      "src/common/enums"
     ]
   },
   "license": "MIT",
