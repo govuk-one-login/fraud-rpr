@@ -29,10 +29,6 @@ Parameters:
     Type: String
     Description: "Name of the branch to be deployed"
     Default: "main"
-  DeployBranchArn:
-    Type: String
-    Description: "The ARN of the branch to deploy"
-    Default: arn:aws:s3:::deploy-branch-artifacts
 
 Globals:
   Function:
@@ -44,10 +40,6 @@ Globals:
     PermissionsBoundary: !If
       - UsePermissionsBoundary
       - !Ref PermissionsBoundary
-      - !Ref AWS::NoValue
-    DeployBranchArn: !If
-      - UseDeployBranchArn
-      - !Ref DeployBranchArn
       - !Ref AWS::NoValue
     Timeout: 30
     Tracing: Active
@@ -80,10 +72,6 @@ Resources:
           - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
-      DeployBranchArn: !If
-        - UseDeployBranchArn
-        - !Ref DeployBranchArn
-        - !Ref AWS::NoValue
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
