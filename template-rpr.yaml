@@ -68,7 +68,7 @@ Resources:
       CodeUri: src/lambdas/receiver-lambda
       Handler: handler.handler
       MemorySize: 128
-      KmsKeyArn: !GetAtt LambdaKeyStore.Ar
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
       ReservedConcurrentExecutions: 10
       VpcConfig:
         SubnetIds:
