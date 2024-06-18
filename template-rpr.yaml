@@ -30,6 +30,19 @@ Parameters:
     Description: "Name of the branch to be deployed"
     Default: "main"
 
+Conditions:
+  UseCodeSigning:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref CodeSigningConfigArn
+          - "none"
+
+  UsePermissionsBoundary:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref PermissionsBoundary
+          - "none"
+
 Globals:
   Function:
     Runtime: nodejs20.x
