@@ -4,7 +4,6 @@ import {
   Context,
 } from "aws-lambda";
 import { FraudLogger, fraudTracer } from "@govuk-one-login/logging/logging";
-import { sendSqsMessage } from "../../common/queues/queues";
 import { SendMessageCommandOutput } from "@aws-sdk/client-sqs";
 import { ErrorMessages } from "../../common/enums/errors";
 import { Logger } from "@aws-lambda-powertools/logger";
@@ -17,10 +16,6 @@ import middy from "@middy/core";
 
 class ReceiverLambda implements LambdaInterface {
   constructor(public fraudLogger: FraudLogger) {}
-
-  get queueUrl(): string | undefined {
-    return process.env.VALIDATOR_QUEUE_URL;
-  }
 
   /**
    *  Triggered from Inbound Event API Gateway. Sends valid events to Validator Queue
@@ -37,7 +32,6 @@ class ReceiverLambda implements LambdaInterface {
 
     try {
       if (!event.body) throw new BadRequestError(ErrorMessages.NoBody);
-      if (!this.queueUrl) throw new ReferenceError(ErrorMessages.NoQueueUrl);
 
       // health check handling
       if (event.body === "healthcheck") {
@@ -49,23 +43,7 @@ class ReceiverLambda implements LambdaInterface {
         };
       }
       this.fraudLogger.logStartedProcessing();
-      RequestValidation.validateInboundEvent(
-        event.body,
-      ); /**validates the incoming request to ensure it has the required body */
-
-      const newMessage: SendMessageCommandOutput = await sendSqsMessage(
-        JSON.stringify({
-          message: event.body,
-          clientID: ReceiverLambda.getClientID(event),
-        }),
-        this.queueUrl,
-      );
-      body = newMessage.MessageId;
-
-      this.fraudLogger.logSuccessfullyProcessed(
-        undefined,
-        newMessage.MessageId,
-      );
+      RequestValidation.validateInboundEvent(event.body); // validates the incoming request to ensure it has the required body
     } catch (error: any) {
       body = error.message;
       this.fraudLogger.logErrorProcessing("No Message ID", error);
