@@ -1,0 +1,218 @@
+openapi: "3.0.1"
+info:
+  title: "receiver"
+  description: "API Gateway to trigger RP-receiver service"
+  version: "1.0.0"
+  contact:
+    name: GOV.UK One Login - Fraud Pod
+
+securityDefinitions:
+  CognitoAuthorizer:
+    type: apiKey,
+    name: Authorization,
+    in: header,
+    x-amazon-apigateway-authtype: cognito_user_pools,
+    x-amazon-apigateway-authorizer:
+      type: cognito_user_pools,
+      providerARNs:
+        - Fn::Sub: "${SSFUserPool.Arn}"
+
+tags:
+  - name: Unauthenticated
+    description: A list of endpoints that do not require authentication
+  - name: User
+    description: A list of endpoints related to the user
+
+paths:
+  /:
+    post:
+      summary: Endpoint for sending Inbound SSF Events
+      requestBody:
+        description: Body containing JWS, which wraps a Security Event Token (SET) data structure, as defined by the [OpenID Shared Signals and Events Framework specification](https://openid.net/specs/openid-sse-framework-1_0.html)
+        tags:
+          - User
+        required: true
+        content:
+          application/JWS:
+            schema:
+              type: string
+              format: application/JWS
+              pattern: '^([a-zA-Z0-9_=]+)\.([a-zA-Z0-9_=]+)\.([a-zA-Z0-9_=]+)$'
+              example: "VGVzdCBTdHJpbmc=.VGVzdCBTdHJpbmc=.VGVzdCBTdHJpbmc="
+      responses:
+        202:
+          headers:
+            Content-Security-Policy:
+              description: Content Security Policy Header
+              schema:
+                type: string
+            Strict-Transport-Security:
+              description: Strict Transport Security Header
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache Control Header
+              schema:
+                type: string
+            X-Frame-Options:
+              description: X-Frame-Options Header
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: X-Content-Type-Options Header
+              schema:
+                type: string
+        400:
+          description: Bad Request. Request Body is not correctly formatted
+          headers:
+            Content-Security-Policy:
+              description: Content Security Policy Header
+              schema:
+                type: string
+            Strict-Transport-Security:
+              description: Strict Transport Security Header
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache Control Header
+              schema:
+                type: string
+            X-Frame-Options:
+              description: X-Frame-Options Header
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: X-Content-Type-Options Header
+              schema:
+                type: string
+        500:
+          description: Internal Server Error
+          headers:
+            Content-Security-Policy:
+              description: Content Security Policy Header
+              schema:
+                type: string
+            Strict-Transport-Security:
+              description: Strict Transport Security Header
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache Control Header
+              schema:
+                type: string
+            X-Frame-Options:
+              description: X-Frame-Options Header
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: X-Content-Type-Options Header
+              schema:
+                type: string
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${InboundEventReceiverFunction.Arn}/invocations"
+        httpMethod: "POST"
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |
+                {}
+      security:
+        - CognitoAuthoriser: ["messages/write"]
+
+  /security.txt:
+    get:
+      summary: "security.txt redirect"
+      tags:
+        - Unauthenticated
+      responses:
+        302:
+          description: "security.txt redirect"
+          headers:
+            Location:
+              schema:
+                type: string
+          content: {}
+      x-amazon-apigateway-integration:
+        type: mock
+        responses:
+          default:
+            statusCode: "302"
+            responseParameters:
+              method.response.header.Location: "'https://vdp.cabinetoffice.gov.uk/.well-known/security.txt'"
+        requestTemplates:
+          application/json: '{"statusCode": 302}'
+
+  /.well-known/security.txt:
+    get:
+      summary: "security.txt redirect"
+      tags:
+        - Unauthenticated
+      responses:
+        302:
+          description: "security.txt redirect"
+          headers:
+            Location:
+              schema:
+                type: string
+          content: {}
+      x-amazon-apigateway-integration:
+        type: mock
+        responses:
+          default:
+            statusCode: "302"
+            responseParameters:
+              method.response.header.Location: "'https://vdp.cabinetoffice.gov.uk/.well-known/security.txt'"
+        requestTemplates:
+          application/json: '{"statusCode": 302}'
+
+  /thanks.txt:
+    get:
+      summary: "thanks.txt redirect"
+      tags:
+        - Unauthenticated
+      responses:
+        302:
+          description: "thanks.txt redirect"
+          headers:
+            Location:
+              schema:
+                type: string
+          content: {}
+      x-amazon-apigateway-integration:
+        type: mock
+        responses:
+          default:
+            statusCode: "302"
+            responseParameters:
+              method.response.header.Location: "'https://vdp.cabinetoffice.gov.uk/.well-known/thanks.txt'"
+        requestTemplates:
+          application/json: '{"statusCode": 302}'
+
+  /.well-known/thanks.txt:
+    get:
+      summary: "thanks.txt redirect"
+      tags:
+        - Unauthenticated
+      responses:
+        302:
+          description: "thanks.txt redirect"
+          headers:
+            Location:
+              schema:
+                type: string
+          content: {}
+      x-amazon-apigateway-integration:
+        type: mock
+        responses:
+          default:
+            statusCode: "302"
+            responseParameters:
+              method.response.header.Location: "'https://vdp.cabinetoffice.gov.uk/.well-known/thanks.txt'"
+        requestTemplates:
+          application/json: '{"statusCode": 302}'
+#checkov:skip=CKV_OPENAPI_5: Auth to be implemented
+security:
+  - apiKey: []
