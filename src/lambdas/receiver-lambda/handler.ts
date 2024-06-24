@@ -4,7 +4,6 @@ import {
   Context,
 } from "aws-lambda";
 import { FraudLogger, fraudTracer } from "@govuk-one-login/logging/logging";
-import { SendMessageCommandOutput } from "@aws-sdk/client-sqs";
 import { ErrorMessages } from "../../common/enums/errors";
 import { Logger } from "@aws-lambda-powertools/logger";
 import { Metrics } from "@aws-lambda-powertools/metrics";

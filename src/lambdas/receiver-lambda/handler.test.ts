@@ -20,10 +20,6 @@ jest.mock("@govuk-one-login/logging/logging", () => ({
   },
 }));
 
-jest.mock("../../common/queues/queues", () => ({
-  sendSqsMessage: jest.fn(() => ({ MessageId: "TestId" })),
-}));
-
 jest.mock("../../common/validation/request-validation", () => ({
   RequestValidation: {
     validateInboundEvent: jest.fn(),

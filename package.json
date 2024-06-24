@@ -28,6 +28,7 @@
     "@babel/preset-env": "^7.21.5",
     "@babel/preset-typescript": "^7.21.5",
     "@types/aws-lambda": "^8.10.115",
+    "@govuk-one-login/events": "0.0.3",
     "@types/jest": "^29.5.1",
     "@types/node": "^20.2.5",
     "aws-sdk-client-mock": "^3.0.0",
@@ -37,11 +38,8 @@
     "typescript": "^5.0.4"
   },
   "jest": {
-    "coveragePathIgnorePatterns": [
-      "src/common/enums"
-    ],
-    "testPathIgnorePatterns": [
-      "src/common/enums"
+    "transformIgnorePatterns": [
+      "node_modules/(?!@govuk-one-login)"
     ]
   },
   "license": "MIT",
