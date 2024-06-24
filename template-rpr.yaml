@@ -65,7 +65,7 @@ Globals:
 
 Resources:
   ##############################################################
-  # Inbound Event Receiver Lambda
+  # Receiver Lambda
   ##############################################################
   ReceiverFunction:
     #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
@@ -75,9 +75,9 @@ Resources:
       Environment:
         Variables:
           LAMBDA_NAME: ReceiverLambda
-      FunctionName: !Sub ${Environment}-${AWS::StackName}-inbound-event-receiver
-      Description: Inbound Event Receiver Lambda
-      CodeUri: src/lambdas/receiver-function
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-event-receiver
+      Description: performs basic payload validation to confirm POST request payload is structured correctly in Base64 strings
+      CodeUri: src/lambdas/receiver-lambda
       Handler: handler.handler
       MemorySize: 128
       KmsKeyArn: !GetAtt LambdaKeyStore.Arn
