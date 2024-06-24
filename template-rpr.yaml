@@ -65,82 +65,6 @@ Globals:
 
 Resources:
   ##############################################################
-  # Receiver Lambda Activation API Gateway
-  ##############################################################
-  ReceiverFunctionApiGateway:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub ${Environment}-${AWS::StackName}-receiver
-      Description: API Gateway to start Receiver Function Lambda
-      StageName: !Ref Environment
-      EndpointConfiguration:
-        Type: REGIONAL
-      DisableExecuteApiEndpoint: !If [OnMainBranch, true, false]
-      TracingEnabled: true
-      CacheClusterEnabled: true
-      CacheClusterSize: "0.5"
-      MinimumCompressionSize: 0
-      DefinitionBody:
-        Fn::Sub':
-          Name: "AWS::Include"
-          Parameters:
-            Location: docs/receiver.yaml
-      AccessLogSetting:
-        DestinationArn: !GetAtt ReceiverFunctionApiLogs.Arn
-        Format: '{"sourceIpAddress": "$context.identity.sourceIp","requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
-      MethodSettings:
-        - ResourcePath: /*
-          HttpMethod: "*"
-          LoggingLevel: INFO
-          MetricsEnabled: true
-          DataTraceEnabled: true
-          CachingEnabled: true
-          CacheDataEncrypted: true
-      Auth:
-        Authorizers:
-          CognitoAuthorizer:
-            UserPoolArn: !Sub "{{resolve:ssm:/${Environment}/ssf/SSFUserPoolArn}}"
-            Identity:
-              Header: Authorization
-            AuthType: "COGNITO_USER_POOLS"
-            AuthorizationScopes:
-              - "messages/write"
-        DefaultAuthorizer: CognitoAuthorizer
-        ResourcePolicy:
-          IpRangeWhitelist:
-            - "51.149.8.67"
-            - "51.149.8.107"
-            - "51.149.8.0/25"
-            - "217.196.229.77"
-            - "217.196.229.79"
-            - "217.196.229.80"
-            - "217.196.229.81"
-            - "51.149.8.0/25"
-            - "51.149.8.128/29"
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneAEIP
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneBEIP
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneCEIP
-            - "3.9.227.33" #Performance Test IP
-            - "18.132.149.145" #Performance Test IP
-
-  ReceiverFunctionApiLogs:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      KmsKeyId: !GetAtt LogKeyStore.Arn
-      RetentionInDays: 30
-
-  ReceiverFunctionApiMapping:
-    Condition: ShouldMapApi
-    Type: "AWS::ApiGatewayV2::ApiMapping"
-    Properties:
-      DomainName: !Sub "{{resolve:ssm:/${Environment}/ssf/domain}}"
-      ApiId: !Ref ReceiverFunctionApiGateway
-      Stage: !Ref ReceiverFunctionApiGateway.Stage
-
-  ##############################################################
   # Inbound Event Receiver Lambda
   ##############################################################
   ReceiverFunction:
@@ -164,17 +88,6 @@ Resources:
           - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
-      Events:
-        InboundApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ReceiverFunctionApiGateway
-            Path: /
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - messages/write
     Metadata:
       BuildMethod: esbuild
       BuildProperties:

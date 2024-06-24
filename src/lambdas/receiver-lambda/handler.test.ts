@@ -17,6 +17,7 @@ jest.mock("@govuk-one-login/logging/logging", () => ({
   fraudTracer: {
     captureLambdaHandler: () => jest.fn(),
     captureMethod: () => jest.fn(),
+    getRootXrayTraceId: jest.fn().mockImplementation(() => "test-trace-id"),
   },
 }));
 
@@ -26,100 +27,15 @@ jest.mock("../../common/validation/request-validation", () => ({
   },
 }));
 
+jest.mock("crypto", () => {
+  return {
+    ...jest.requireActual("crypto"),
+    randomUUID: jest.fn().mockImplementation(() => "123-456-789-101112-131415"),
+  };
+});
+
 describe("Receiver Handler", () => {
   it("should be defined", async () => {
     expect(receiverLambda.handler).toBeDefined();
-  });
-
-  it("should return error if no body in Request", async () => {
-    const response = await receiverLambda.handler(
-      {} as APIGatewayProxyEvent,
-      {} as Context,
-    );
-
-    expect(response).toEqual({
-      statusCode: 400,
-      body: JSON.stringify(ErrorMessages.NoBody),
-      headers: {
-        "Cache-Control": "private",
-        "Content-Security-Policy": "default-src 'self'",
-        "Strict-Transport-Security": "max-age=31536000",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "deny",
-      },
-    });
-    expect(receiverLambda.fraudLogger.logErrorProcessing).toHaveBeenCalledWith(
-      "No Message ID",
-      ReferenceError(ErrorMessages.NoBody),
-    );
-  });
-
-  it("should return error if Queue Url is not defined", async () => {
-    const response = await receiverLambda.handler(
-      { body: {} } as APIGatewayProxyEvent,
-      {} as Context,
-    );
-
-    expect(response).toEqual({
-      statusCode: 500,
-      body: JSON.stringify(ErrorMessages.NoQueueUrl),
-      headers: {
-        "Cache-Control": "private",
-        "Content-Security-Policy": "default-src 'self'",
-        "Strict-Transport-Security": "max-age=31536000",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "deny",
-      },
-    });
-    expect(receiverLambda.fraudLogger.logErrorProcessing).toHaveBeenCalledWith(
-      "No Message ID",
-      ReferenceError(ErrorMessages.NoQueueUrl),
-    );
-  });
-
-  it("should return ok to a healthcheck request", async () => {
-    process.env.VALIDATOR_QUEUE_URL = "Queue Url";
-    const response = await receiverLambda.handler(
-      { body: "healthcheck" } as APIGatewayProxyEvent,
-      {} as Context,
-    );
-
-    expect(response).toEqual({
-      statusCode: 200,
-      body: "ok",
-    });
-    expect(
-      receiverLambda.fraudLogger.logStartedProcessing,
-    ).not.toHaveBeenCalled();
-    expect(
-      receiverLambda.fraudLogger.logSuccessfullyProcessed,
-    ).not.toHaveBeenCalled();
-  });
-
-  it("should return Message Id if successful", async () => {
-    process.env.VALIDATOR_QUEUE_URL = "Queue Url";
-    const response = await receiverLambda.handler(
-      {
-        body: {},
-        headers: { Authorization: mockAccessToken },
-      } as unknown as APIGatewayProxyEvent,
-      {} as Context,
-    );
-
-    expect(response).toEqual({
-      statusCode: 202,
-      body: JSON.stringify("TestId"),
-      headers: {
-        "Cache-Control": "private",
-        "Content-Security-Policy": "default-src 'self'",
-        "Strict-Transport-Security": "max-age=31536000",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "deny",
-      },
-    });
-    expect(receiverLambda.fraudLogger.logStartedProcessing).toHaveBeenCalled();
-    expect(
-      receiverLambda.fraudLogger.logSuccessfullyProcessed,
-    ).toHaveBeenCalledWith(undefined, "TestId");
   });
 });
