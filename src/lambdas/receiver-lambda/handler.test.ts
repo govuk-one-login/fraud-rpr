@@ -39,3 +39,10 @@ describe("Receiver Handler", () => {
     expect(receiverLambda.handler).toBeDefined();
   });
 });
+
+it("should return error if no body in Request", async () => {
+  const response = await receiverLambda.handler(
+    {} as APIGatewayProxyEvent,
+    {} as Context,
+  );
+});

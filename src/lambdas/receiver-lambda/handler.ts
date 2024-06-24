@@ -33,16 +33,6 @@ class ReceiverLambda implements LambdaInterface {
       if (!event.body) throw new BadRequestError(ErrorMessages.NoBody);
 
       // health check handling
-      if (event.body === "healthcheck") {
-        statusCode = 200;
-        body = "ok";
-        return {
-          statusCode,
-          body,
-        };
-      }
-      this.fraudLogger.logStartedProcessing();
-      RequestValidation.validateInboundEvent(event.body); // validates the incoming request to ensure it has the required body
     } catch (error: any) {
       body = error.message;
       this.fraudLogger.logErrorProcessing("No Message ID", error);
@@ -69,15 +59,6 @@ class ReceiverLambda implements LambdaInterface {
    * @param event
    * @returns
    */
-  static getClientID(event: APIGatewayProxyEvent): string {
-    const accessToken = event.headers.Authorization as string;
-    const [, payload] = accessToken.split(".");
-    const decodedPayload = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    );
-
-    return decodedPayload.client_id;
-  }
 }
 
 export const receiverLambda: ReceiverLambda = new ReceiverLambda(
@@ -88,8 +69,4 @@ export const receiverLambda: ReceiverLambda = new ReceiverLambda(
       namespace: process.env.POWERTOOLS_METRICS_NAMESPACE,
     }),
   ),
-);
-
-export const handler = middy(receiverLambda.handler.bind(receiverLambda)).use(
-  captureLambdaHandler(fraudTracer),
 );
