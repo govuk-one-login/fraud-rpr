@@ -1,18 +1,4 @@
 export enum ErrorMessages {
-  FailedToSendAll = "Failed to send all messages in batch",
-  InvalidSQSResponse = "Invalid response received from SQS client",
-  JWSNotVerified = "Previous logged JWS not verified",
-  LostMessage = "Some messages were lost in the SQS Send Batch Request",
-  MissingRequiredFields = "Event missing required fields: ",
   NoBody = "No Body in Request",
-  NoCredentials = "No Credentials Received",
-  NoItems = "No items to be parsed",
-  NoMessages = "There are no messages passed through",
-  NoQueueUrl = "Queue URL not Available",
-  NoSubjectEvent = "No subject event found in events block of SET",
   NotString = "Request is not a string",
-  NotValidBase64 = "Request does not contain a valid Base64 string",
-  NotValidEventType = "Event Type is not valid",
-  NotValidJWSStructure = "Request does not contain a valid JWS. Invalid number of sections",
-  TooManyMessages = "Too many messages are being attempting to be sent via SQS in one batch",
 }

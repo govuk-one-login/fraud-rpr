@@ -28,8 +28,6 @@ class ReceiverLambda implements LambdaInterface {
 
     try {
       if (!event.body) throw new BadRequestError(ErrorMessages.NoBody);
-
-      // health check handling
     } catch (error: any) {
       body = error.message;
       this.fraudLogger.logErrorProcessing("No Message ID", error);

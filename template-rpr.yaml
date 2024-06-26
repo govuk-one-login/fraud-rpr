@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  SAM Template for outbound messages for relying parties
+  Application for outbound messages for relying parties
 
 Parameters:
   Environment:
@@ -12,8 +12,6 @@ Parameters:
       - development
       - build
       - staging
-      - integration
-      - production
   CodeSigningConfigArn:
     Type: String
     Description: >
@@ -31,10 +29,6 @@ Parameters:
     Type: String
     Description: "Name of the branch to be deployed"
     Default: "main"
-  DownloadTableName:
-    Type: "String"
-    Description: "Table name of the DynamoDB used for Download flow"
-    Default: "download-table"
 
 Conditions:
   UseCodeSigning: !Not [!Equals [!Ref CodeSigningConfigArn, "none"]]
@@ -57,9 +51,9 @@ Globals:
       - arm64
     Environment:
       Variables:
-        LOG_LEVEL: INFO
-        POWERTOOLS_SERVICE_NAME: inboundSSF
-        POWERTOOLS_METRICS_NAMESPACE: !Sub ${Environment}-InboundSSF
+        LOG_LEVEL: DEBUG
+        POWERTOOLS_SERVICE_NAME: RPR
+        POWERTOOLS_METRICS_NAMESPACE: !Sub ${Environment}-RPR
         POWERTOOLS_TRACE_ENABLED: true
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS: true
 
@@ -95,14 +89,6 @@ Resources:
         Target: "es2020"
         EntryPoints:
           - handler.ts
-
-  PermissionForInboundAPItoCallEventReceiverFunction:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref ReceiverFunction
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ReceiverFunctionApiGateway}/*/*/*"
 
   ReceiverLambdaLogs:
     Type: AWS::Logs::LogGroup
