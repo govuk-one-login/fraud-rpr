@@ -3,12 +3,14 @@ import {
   APIGatewayProxyEvent,
   Context,
 } from "aws-lambda";
-import { FraudLogger } from "@govuk-one-login/logging/logging";
+import { FraudLogger, fraudTracer } from "@govuk-one-login/logging/logging";
 import { ErrorMessages } from "../../common/enums/errors";
 import { Logger } from "@aws-lambda-powertools/logger";
 import { Metrics } from "@aws-lambda-powertools/metrics";
 import { LambdaInterface } from "@aws-lambda-powertools/commons";
 import { BadRequestError } from "../../common/errors/errors";
+import middy from "@middy/core";
+import { captureLambdaHandler } from "@aws-lambda-powertools/tracer";
 
 class ReceiverLambda implements LambdaInterface {
   constructor(public fraudLogger: FraudLogger) {}
@@ -64,4 +66,8 @@ export const receiverLambda: ReceiverLambda = new ReceiverLambda(
       namespace: process.env.POWERTOOLS_METRICS_NAMESPACE,
     }),
   ),
+);
+
+export const handler = middy(receiverLambda.handler.bind(receiverLambda)).use(
+  captureLambdaHandler(fraudTracer),
 );
