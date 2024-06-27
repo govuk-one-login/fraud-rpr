@@ -57,11 +57,9 @@ jobs:
             return JSON.parse(process.env.LATEST_RELEASE).tagName;
 
       - name: Upload to AWS S3
-        env:
-          ARTIFACT_BUCKET: ${{ secrets.s3-bucket-name }}
-          SIGNING_PROFILE: ${{ secrets.signing-profile-name }}
-          AWS_REGION: ${{ inputs.aws-region }}
-          TEMPLATE_FILE: ${{ inputs.sam-template-file }}
-          VERSION_NUMBER: ${{ steps.parse-release-number.outputs.result }}
-        run: ./.github/scripts/upload.sh
-        shell: bash
+        uses: govuk-one-login/devplatform-upload-action@v3.9
+        with:
+          artifact-bucket-name: ${{ secrets.s3-bucket-name }}
+          signing-profile-name: ${{ secrets.signing-profile-name }}
+          version-number: ${{ steps.parse-release-number.outputs.result }}
+          working-directory: .aws-sam/build
