@@ -1,0 +1,18 @@
+
+version = 0.1
+
+[default]
+[default.global]
+[default.global.parameters]
+region = 'eu-west-2'
+
+[default.build.parameters]
+template_file = 'template-rpr.yaml'
+
+[default.deploy.parameters]
+capabilities = 'CAPABILITY_NAMED_IAM'
+confirm_changeset = false
+fail_on_empty_changeset = false
+s3_bucket = 'deploy-branch-artifacts'
+tags = 'DeploymentSource=LocalDeploy StackType=Preview'
+parameter_overrides = 'Environment=development LocalName=default VpcStackName=vpc BranchName=notMain'

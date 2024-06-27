@@ -30,6 +30,10 @@ Parameters:
     Description: "Name of the branch to be deployed"
     Default: "main"
 
+Conditions:
+  UseCodeSigning: !Not [!Equals [!Ref CodeSigningConfigArn, "none"]]
+  UsePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, "none"]]
+
 Globals:
   Function:
     Runtime: nodejs20.x
@@ -45,5 +49,86 @@ Globals:
     Tracing: Active
     Architectures:
       - arm64
+    Environment:
+      Variables:
+        LOG_LEVEL: DEBUG
+        POWERTOOLS_SERVICE_NAME: RPR
+        POWERTOOLS_METRICS_NAMESPACE: !Sub ${Environment}-RPR
+        POWERTOOLS_TRACE_ENABLED: true
+        POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS: true
 
 Resources:
+  ##############################################################
+  # Receiver Lambda
+  ##############################################################
+  ReceiverFunction:
+    #checkov:skip=CKV_AWS_116: Lambda level DLQs not supported with SQS / Api Gateway Triggers. DLQs at Queue level instead
+    Type: AWS::Serverless::Function
+    Properties:
+      Tracing: Active
+      Environment:
+        Variables:
+          LAMBDA_NAME: ReceiverLambda
+      FunctionName: !Sub ${Environment}-${AWS::StackName}-event-receiver
+      Description: performs basic payload validation to confirm POST request payload is structured correctly in Base64 strings
+      CodeUri: src/lambdas/receiver-lambda
+      Handler: handler.handler
+      MemorySize: 128
+      KmsKeyArn: !GetAtt LambdaKeyStore.Arn
+      ReservedConcurrentExecutions: 10
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: "es2020"
+        EntryPoints:
+          - handler.ts
+
+  ReceiverLambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReceiverFunction}"
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
+  ##############################################################
+  # Encryption Keys
+  ##############################################################
+  LogKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Logs
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action: "kms:*"
+            Resource: "*"
+
+  LambdaKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Lambda Variables
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
