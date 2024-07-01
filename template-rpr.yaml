@@ -33,6 +33,9 @@ Parameters:
 Conditions:
   UseCodeSigning: !Not [!Equals [!Ref CodeSigningConfigArn, "none"]]
   UsePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, "none"]]
+  OnMainBranch: !Or
+    - !Equals [!Ref BranchName, "main"]
+    - !Not [!Equals [!Ref Environment, development]]
 
 Globals:
   Function:
@@ -79,51 +82,6 @@ Resources:
           Name: "AWS::Include"
           Parameters:
             Location: docs/ReceiverFunction.yaml
-        DefaultAuthorizer: CognitoAuthorizer
-        ResourcePolicy:
-          IpRangeWhitelist:
-            - "51.149.8.67"
-            - "51.149.8.107"
-            - "51.149.8.0/25"
-            - "217.196.229.77"
-            - "217.196.229.79"
-            - "217.196.229.80"
-            - "217.196.229.81"
-            - "51.149.8.0/25"
-            - "51.149.8.128/29"
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneAEIP
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneBEIP
-            - Fn::ImportValue:
-                Fn::Sub: ${VpcStackName}-NatGatewayZoneCEIP
-            - "3.9.227.33" #Performance Test IP
-            - "18.132.149.145" #Performance Test IP
-
-  ReceiverFunctionApiLogs:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/apigateway/${Environment}-${AWS::StackName}-receiver"
-      KmsKeyId: !GetAtt LogKeyStore.Arn
-      RetentionInDays: 30
-
-  ReceiverFunctionApiGatewayLogsSubscriptionFilter:
-    Type: AWS::Logs::SubscriptionFilter
-    DependsOn: ReceiverFunctionApiLogs
-    Condition: IsStagingIntegrationProdEnv
-    Properties:
-      DestinationArn: !Sub "{{resolve:ssm:/${Environment}/ssf/CSLSDestinationArn}}"
-      FilterPattern: ""
-      LogGroupName: !Sub "/aws/apigateway/${Environment}-${AWS::StackName}-receiver"
-
-  ReceiverFunctionApiMapping:
-    Condition: ShouldMapApi
-    Type: "AWS::ApiGatewayV2::ApiMapping"
-    Properties:
-      DomainName: !Sub "{{resolve:ssm:/${Environment}/ssf/domain}}"
-      ApiId: !Ref ReceiverFunctionApiGateway
-      Stage: !Ref ReceiverFunctionApiGateway.Stage
-
   ##############################################################
   # Receiver Lambda
   ##############################################################
@@ -155,10 +113,6 @@ Resources:
             RestApiId: !Ref ReceiverFunctionApiGateway
             Path: /
             Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - messages/write
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
