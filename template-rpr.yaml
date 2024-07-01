@@ -82,6 +82,17 @@ Resources:
           Name: "AWS::Include"
           Parameters:
             Location: docs/ReceiverFunction.yaml
+      AccessLogSetting:
+        DestinationArn: !GetAtt ReceiverFunctionApiLogs.Arn
+        Format: '{"sourceIpAddress": "$context.identity.sourceIp","requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","resourcePath":"$context.resourcePath","status":$context.status,"responseLatency":$context.responseLatency}'
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          DataTraceEnabled: true
+          CachingEnabled: true
+          CacheDataEncrypted: true
 
   ReceiverFunctionApiLogs:
     Type: AWS::Logs::LogGroup
