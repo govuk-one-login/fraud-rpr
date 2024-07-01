@@ -82,6 +82,14 @@ Resources:
           Name: "AWS::Include"
           Parameters:
             Location: docs/ReceiverFunction.yaml
+
+  ReceiverFunctionApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/${Environment}-${AWS::StackName}-receiver"
+      KmsKeyId: !GetAtt LogKeyStore.Arn
+      RetentionInDays: 30
+
   ##############################################################
   # Receiver Lambda
   ##############################################################
