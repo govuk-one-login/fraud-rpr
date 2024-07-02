@@ -33,9 +33,6 @@ Parameters:
 Conditions:
   UseCodeSigning: !Not [!Equals [!Ref CodeSigningConfigArn, "none"]]
   UsePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, "none"]]
-  OnMainBranch: !Or
-    - !Equals [!Ref BranchName, "main"]
-    - !Not [!Equals [!Ref Environment, development]]
 
 Globals:
   Function:

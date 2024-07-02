@@ -5,4 +5,6 @@ export enum ErrorMessages {
   NoMessages = "There are no messages passed through",
   NoQueueUrl = "Queue URL not Available",
   TooManyMessages = "Too many messages are being attempting to be sent via SQS in one batch",
+  NoBody = "No Body in Request",
+  NotString = "Request is not a string",
 }
