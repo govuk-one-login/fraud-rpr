@@ -33,6 +33,9 @@ Parameters:
 Conditions:
   UseCodeSigning: !Not [!Equals [!Ref CodeSigningConfigArn, "none"]]
   UsePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, "none"]]
+  OnMainBranch: !Or
+    - !Equals [!Ref BranchName, "main"]
+    - !Not [!Equals [!Ref Environment, development]]
 
 Globals:
   Function:
@@ -181,3 +184,10 @@ Resources:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: "kms:*"
             Resource: "*"
+
+Outputs:
+  QueueKeyArn:
+    Description: Arn of the KMS Queue Key
+    Value: !GetAtt QueueKeyStore.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-QueueKeyArn"
