@@ -27,8 +27,7 @@ The receiver function is triggered from the API Gateway via a POST request conta
 The receiver function does the following:
 - checks if the request consists of three base-64 encoded strings separated by periods (.);
 
-### Responses
-
+#### Responses
 - If a request is successfully checked and processed, then a HTTP 202 status will be returned.
 - If the request is badly formatted, then a HTTP 400 status will be returned.
 - If any other errors occur, then a HTTP 500 status will be returned.
@@ -39,7 +38,7 @@ AWS Simple Queue Service (SQS) queues are used between the receiver and validate
 
 ### Validate Event function
 
-The validate function receives message from the validate sqs queue, then verifies the JWS signature Once the signature has been verified, the SET message is extracted from the JWS. The SET message is then validated. Once it has been validated, the Raw SET payload is fed to the Cloudwatch Logs for the Relying Parties to utilise in their own applications.
+The validate function receives messages from the validate sqs queue and verifies the JWS signature. Once the signature is verified, the SET message is extracted from the JWS. Subsequently, the SET message undergoes validation. After validation, the raw SET payload is sent to CloudWatch Logs for the Relying Parties to use in their applications.
 
 ### Architecture Diagram
 ![Relying Party Receiver Architecture Diagram](<RPR-Detailed Architecture.jpg>)
