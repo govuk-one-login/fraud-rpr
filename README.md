@@ -27,8 +27,7 @@ The receiver function is triggered from the API Gateway via a POST request conta
 The receiver function does the following:
 - checks if the request consists of three base-64 encoded strings separated by periods (.);
 
-## Responses
-
+### Responses
 - If a request is successfully checked and processed, then a HTTP 202 status will be returned.
 - If the request is badly formatted, then a HTTP 400 status will be returned.
 - If any other errors occur, then a HTTP 500 status will be returned.
