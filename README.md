@@ -27,6 +27,13 @@ The receiver function is triggered from the API Gateway via a POST request conta
 The receiver function does the following:
 - checks if the request consists of three base-64 encoded strings separated by periods (.);
 
+## Responses
+
+- If a request is successfully checked and processed, then a HTTP 202 status will be returned.
+- If the request is badly formatted, then a HTTP 400 status will be returned.
+- If any other errors occur, then a HTTP 500 status will be returned.
+
+
 ### Validate SQS Queue
 AWS Simple Queue Service (SQS) queues are used between the receiver and validate event functions. If a message fails to send on the first attempt, AWS SQS reattempts to send the message until it reaches the limit, before transferring the message to the associated AWS Dead Letter Queue (DLQ). The reattempt limit is set in the queue redrive policy.
 
