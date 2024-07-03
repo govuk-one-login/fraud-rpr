@@ -1,7 +1,9 @@
 # Relying-Party Receiver
+
 This is the source code for the Relying Party Receiver (RPR) application. The RPR application demonstrates how serverless functions can recieve messages from Shared Signals Framework (SSF).
 
 This page explains:
+
 - [the logic behind the serverless functions](#understanding-the-rpr-functions)
 - [how to build and deploy the RPR using AWS](#building-and-deploying-the-rpr-using-aws)
 
@@ -15,25 +17,25 @@ The RPR is made up of four main components:
 
 - [an api-gateway](#api-gateway) - acts as the entry point that receives messages in JWS format.
 - [a receiver function](#receiver-function) - you must implement the receiver function to receive message from the API Gateway.
-- [a validate-sqs-queue](#validate-sqs-queue ) - queues payload to be sent to the validate event lambda.
+- [a validate-sqs-queue](#validate-sqs-queue) - queues payload to be sent to the validate event lambda.
 - [a validate event function](#helper-functions) - extracts SET from the JWS message.
-
-
 
 ### Receiver function
 
-The receiver function is triggered from the API Gateway via a POST request containing a JWS. The receiver function performs basic validation of the JWS (Json Web Signature) request. 
+The receiver function is triggered from the API Gateway via a POST request containing a JWS. The receiver function performs basic validation of the JWS (Json Web Signature) request.
 
 The receiver function does the following:
+
 - checks if the request consists of three base-64 encoded strings separated by periods (.);
 
 #### Responses
+
 - If a request is successfully checked and processed, then a HTTP 202 status will be returned.
 - If the request is badly formatted, then a HTTP 400 status will be returned.
 - If any other errors occur, then a HTTP 500 status will be returned.
 
-
 ### Validate SQS Queue
+
 AWS Simple Queue Service (SQS) queues are used between the receiver and validate event functions. If a message fails to send on the first attempt, AWS SQS reattempts to send the message until it reaches the limit, before transferring the message to the associated AWS Dead Letter Queue (DLQ). The reattempt limit is set in the queue redrive policy.
 
 ### Validate Event function
@@ -41,6 +43,7 @@ AWS Simple Queue Service (SQS) queues are used between the receiver and validate
 The validate function receives messages from the validate sqs queue and verifies the JWS signature. Once the signature is verified, the SET message is extracted from the JWS. Subsequently, the SET message undergoes validation. After validation, the raw SET payload is sent to CloudWatch Logs for the Relying Parties to use in their applications.
 
 ### Architecture Diagram
+
 ![RPR-Detailed Architecture](https://github.com/govuk-one-login/fraud-rpr/assets/169366112/e10c0f25-4247-4526-8330-2cdf22c26c59)
 
 ## Building and deploying the RPR using AWS
@@ -53,8 +56,8 @@ This section explains:
 - [how to deploy the application](#deploying-the-application)
 - [how events are logged](#logging-events)
 
-
 ### Before you start
+
 To build the application you’ll need:
 
 - an AWS Account
@@ -127,4 +130,3 @@ To configure the tools:
   - connect the AWS toolkit to your AWS account by running `aws configure sso`
 - install the [SonarLint extension for VS Code](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode) as a TypeScript linter
   - use Connected Mode to bind your local repository to the remote repository on SonarCloud
-
