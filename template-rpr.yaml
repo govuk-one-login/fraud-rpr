@@ -182,9 +182,3 @@ Resources:
             Action: "kms:*"
             Resource: "*"
 
-Outputs:
-  QueueKeyArn:
-    Description: Arn of the KMS Queue Key
-    Value: !GetAtt QueueKeyStore.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-QueueKeyArn"

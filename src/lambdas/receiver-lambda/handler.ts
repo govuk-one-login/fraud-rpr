@@ -56,7 +56,6 @@ class ReceiverLambda implements LambdaInterface {
       const newMessage: SendMessageCommandOutput = await sendSqsMessage(
         JSON.stringify({
           message: event.body,
-          clientID: ReceiverLambda.getClientID(event),
         }),
         this.queueUrl,
       );
@@ -85,21 +84,6 @@ class ReceiverLambda implements LambdaInterface {
         "X-Content-Type-Options": "nosniff",
       },
     };
-  }
-
-  /**
-   * Get ClientID from Access token in request
-   * @param event
-   * @returns
-   */
-  static getClientID(event: APIGatewayProxyEvent): string {
-    const accessToken = event.headers.Authorization as string;
-    const [, payload] = accessToken.split(".");
-    const decodedPayload = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    );
-
-    return decodedPayload.client_id;
   }
 }
 
