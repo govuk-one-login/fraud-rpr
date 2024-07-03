@@ -28,6 +28,7 @@ The receiver function does the following:
 - checks if the request consists of three base-64 encoded strings separated by periods (.);
 
 ### Responses
+
 - If a request is successfully checked and processed, then a HTTP 202 status will be returned.
 - If the request is badly formatted, then a HTTP 400 status will be returned.
 - If any other errors occur, then a HTTP 500 status will be returned.
@@ -39,6 +40,9 @@ AWS Simple Queue Service (SQS) queues are used between the receiver and validate
 ### Validate Event function
 
 The validate function receives message from the validate sqs queue, then verifies the JWS signature Once the signature has been verified, the SET message is extracted from the JWS. The SET message is then validated. Once it has been validated, the Raw SET payload is fed to the Cloudwatch Logs for the Relying Parties to utilise in their own applications.
+
+### Architecture Diagram
+![Relying Party Receiver Architecture Diagram](<RPR-Detailed Architecture.jpg>)
 
 ## Building and deploying the RPR using AWS
 
@@ -124,3 +128,4 @@ To configure the tools:
   - connect the AWS toolkit to your AWS account by running `aws configure sso`
 - install the [SonarLint extension for VS Code](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode) as a TypeScript linter
   - use Connected Mode to bind your local repository to the remote repository on SonarCloud
+
