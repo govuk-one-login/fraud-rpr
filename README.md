@@ -26,7 +26,7 @@ The receiver function is triggered from the API Gateway via a POST request conta
 
 The receiver function does the following:
 
-- checks if the request consists of three base-64 encoded strings separated by periods (.);
+- checks if the request consists of three base-64 encoded strings separated by periods (`.`);
 
 #### Responses
 
