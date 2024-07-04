@@ -7,7 +7,7 @@ This page explains:
 - [the logic behind the serverless functions](#understanding-the-rpr-functions)
 - [how to build and deploy the RPR using AWS](#building-and-deploying-the-rpr-using-aws)
 
-You can [read more about the responsibilities of receivers and transmitters, the [Security Event Token](https://datatracker.ietf.org/doc/html/rfc8417) (SET) format]
+You can read more about the responsibilities of receivers and transmitters, the [Security Event Token](https://datatracker.ietf.org/doc/html/rfc8417) (SET) format
 
 ## Understanding the RPR functions
 
