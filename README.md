@@ -84,7 +84,7 @@ To build the application:
 1. Download and install the TypeScript application dependencies. From the root of the repository, run:
 
 ```bash
-npm-install
+npm install
 ```
 
 1. Use the AWS CLI build action to build the application locally. The [application infrastructure config file](template-rpr.yaml) describes the cloud resources and their configuration. The [logic for the serverless functions](/src/lambdas/) is linked to from this config file. From the root of the repository, run:
