@@ -1,6 +1,6 @@
 # Relying-Party Receiver
 
-This is the source code for the Relying Party Receiver (RPR) application. The RPR application demonstrates how serverless functions can recieve messages from Shared Signals Framework (SSF).
+This is the source code for the Relying Party Receiver (RPR) application. The RPR application demonstrates how serverless functions can receive messages from Shared Signals Framework (SSF).
 
 This page explains:
 
