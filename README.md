@@ -127,6 +127,6 @@ To configure the tools:
 
 - run `pre-commit install` to install the project's pre-commit hooks to improve security and write cleaner code - you must do this if you’re making changes to this repository
 - install the [AWS Toolkit extension for VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html) for a more integrated experience with AWS
-  - connect the AWS toolkit to your AWS account by running `aws configure sso`
+- connect the AWS toolkit to your AWS account by running `aws configure sso`
 - install the [SonarLint extension for VS Code](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode) as a TypeScript linter
-  - use Connected Mode to bind your local repository to the remote repository on SonarCloud
+- use Connected Mode to bind your local repository to the remote repository on SonarCloud
