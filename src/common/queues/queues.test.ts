@@ -1,7 +1,7 @@
 import { expect, describe, it } from "@jest/globals";
 import { sendSqsMessage } from "./queues";
 import { mockClient } from "aws-sdk-client-mock";
-import { SQSClient} from "@aws-sdk/client-sqs";
+import { SQSClient } from "@aws-sdk/client-sqs";
 
 const sqsMock = mockClient(SQSClient);
 sqsMock.onAnyCommand().resolves({ MessageId: "12345" });
