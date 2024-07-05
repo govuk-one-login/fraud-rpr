@@ -47,7 +47,13 @@ AWS Simple Queue Service (SQS) queues are used between the receiver and validate
 The validate function receives messages from the validate sqs queue and verifies the JWS signature. Once the signature is verified, the SET message is extracted from the JWS. Subsequently, the SET message undergoes validation. After validation, the raw SET payload is sent to CloudWatch Logs for the Relying Parties to use in their applications.
 
 ### Architecture Diagram
+
+#### Detailed Architecture Diagram
 ![RPR-Detailed Architecture](https://github.com/govuk-one-login/fraud-rpr/assets/169366112/06d09622-c913-4e63-a05e-61bfaa3bd550)
+
+
+#### Main Architecture Diagram
+![RPR-Page-1](https://github.com/govuk-one-login/fraud-rpr/assets/169366112/8475d560-0a04-413f-8d0d-19e030bc91ef)
 
 
 
