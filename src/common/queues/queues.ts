@@ -4,8 +4,6 @@ import {
   SendMessageCommandOutput,
 } from "@aws-sdk/client-sqs";
 import { fraudTracer } from "@govuk-one-login/logging/logging";
-import { LogEvents } from "../enums/log-events";
-import { ErrorMessages } from "../enums/errors";
 
 const sqsClient = fraudTracer.captureAWSv3Client(
   new SQSClient({

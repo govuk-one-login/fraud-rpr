@@ -7,4 +7,6 @@ export enum ErrorMessages {
   TooManyMessages = "Too many messages are being attempting to be sent via SQS in one batch",
   NoBody = "No Body in Request",
   NotString = "Request is not a string",
+  NotValidJWSStructure = 'Request does not contain a valid JWS. Invalid number of sections',
+  NotValidBase64 = 'Request does not contain a valid Base64 string',
 }
