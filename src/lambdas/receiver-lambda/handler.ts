@@ -54,7 +54,7 @@ class ReceiverLambda implements LambdaInterface {
       ); /**validates the incoming request to ensure it has the required body */
 
       const newMessage: SendMessageCommandOutput = await sendSqsMessage(
-        JSON.stringify(event.body),
+        event.body,
         this.queueUrl,
       );
       body = newMessage.MessageId;
