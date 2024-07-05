@@ -1,4 +1,7 @@
 # Relying-Party Receiver
+![node](https://img.shields.io/badge/node-20.13.0-339933?logo=nodedotjs) ![aws-cli](https://img.shields.io/badge/aws--cli-2.x-232F3E?logo=amazonwebservices) ![sam-cli](https://img.shields.io/badge/sam--cli-1.x-232F3E?logo=amazonwebservices) ![pre-commit](https://img.shields.io/badge/pre--commit-3.x-FAB040?logo=pre-commit) ![Docker](https://img.shields.io/badge/docker-4.x-2496ED?logo=docker)
+
+[![Publish Main](https://github.com/govuk-one-login/fraud-rpr/actions/workflows/publish-main.yaml/badge.svg?branch=main)](https://github.com/govuk-one-login/fraud-rpr/blob/main/.github/workflows/publish-main.yaml) [![SonarCloud](https://github.com/govuk-one-login/fraud-rpr/actions/workflows/code-quality-sonarcloud.yaml/badge.svg?branch=main)] (https://github.com/govuk-one-login/fraud-rpr/blob/main/.github/workflows/code-quality-sonarcloud.yaml)[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=fraud-rpr&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=fraud-rpr) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=fraud-rpr&metric=coverage)](https://sonarcloud.io/summary/new_code?id=fraud-rpr)
 
 This is the source code for the Relying Party Receiver (RPR) application. The RPR application demonstrates how serverless functions can receive messages from Shared Signals Framework (SSF).
 
