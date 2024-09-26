@@ -4,16 +4,23 @@ import {
   Context,
 } from "aws-lambda";
 import { FraudLogger, fraudTracer } from "@govuk-one-login/logging/logging";
+import { sendSqsMessage } from "../../common/queues/queues";
+import { SendMessageCommandOutput } from "@aws-sdk/client-sqs";
 import { ErrorMessages } from "../../common/enums/errors";
 import { Logger } from "@aws-lambda-powertools/logger";
 import { Metrics } from "@aws-lambda-powertools/metrics";
+import { captureLambdaHandler } from "@aws-lambda-powertools/tracer";
 import { LambdaInterface } from "@aws-lambda-powertools/commons";
+import { RequestValidation } from "../../common/validation/request-validation";
 import { BadRequestError } from "../../common/errors/errors";
 import middy from "@middy/core";
-import { captureLambdaHandler } from "@aws-lambda-powertools/tracer";
 
 class ReceiverLambda implements LambdaInterface {
   constructor(public fraudLogger: FraudLogger) {}
+
+  get queueUrl(): string | undefined {
+    return process.env.VALIDATOR_QUEUE_URL;
+  }
 
   /**
    *  Triggered from Inbound Event API Gateway. Sends valid events to Validator Queue
@@ -30,6 +37,32 @@ class ReceiverLambda implements LambdaInterface {
 
     try {
       if (!event.body) throw new BadRequestError(ErrorMessages.NoBody);
+      if (!this.queueUrl) throw new ReferenceError(ErrorMessages.NoQueueUrl);
+
+      // health check handling
+      if (event.body === "healthcheck") {
+        statusCode = 200;
+        body = "ok";
+        return {
+          statusCode,
+          body,
+        };
+      }
+      this.fraudLogger.logStartedProcessing();
+      RequestValidation.validateInboundEvent(
+        event.body,
+      ); /**validates the incoming request to ensure it has the required body */
+
+      const newMessage: SendMessageCommandOutput = await sendSqsMessage(
+        event.body,
+        this.queueUrl,
+      );
+      body = newMessage.MessageId;
+
+      this.fraudLogger.logSuccessfullyProcessed(
+        undefined,
+        newMessage.MessageId,
+      );
     } catch (error: any) {
       body = error.message;
       this.fraudLogger.logErrorProcessing("No Message ID", error);
@@ -50,12 +83,6 @@ class ReceiverLambda implements LambdaInterface {
       },
     };
   }
-
-  /**
-   * Get ClientID from Access token in request
-   * @param event
-   * @returns
-   */
 }
 
 export const receiverLambda: ReceiverLambda = new ReceiverLambda(
