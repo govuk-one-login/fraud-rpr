@@ -69,6 +69,7 @@ Resources:
       Environment:
         Variables:
           LAMBDA_NAME: ReceiverLambda
+          VALIDATOR_QUEUE_URL: !Ref ValidateEventQueue
       FunctionName: !Sub ${Environment}-${AWS::StackName}-event-receiver
       Description: performs basic payload validation to confirm POST request payload is structured correctly in Base64 strings
       CodeUri: src/lambdas/receiver-lambda
@@ -82,6 +83,21 @@ Resources:
           - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ValidateEventQueue.QueueName
+        - KMSEncryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref QueueKeyStore
+        - KMSDecryptPolicy:
+            KeyId: !Ref LambdaKeyStore
+        - Statement:
+            Sid: queueKeyPermissions
+            Effect: Allow
+            Action:
+              - kms:GenerateDataKey
+            Resource: !GetAtt QueueKeyStore.Arn
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -98,8 +114,41 @@ Resources:
       RetentionInDays: 30
 
   ##############################################################
+  # Validate Event Queue
+  ##############################################################
+  ValidateEventQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ValidateEventDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ##############################################################
+  # Validate Event Dead Letter Queue
+  ##############################################################
+  ValidateEventDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref QueueKeyStore
+
+  ##############################################################
   # Encryption Keys
   ##############################################################
+  QueueKeyStore:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encryption key for Queues
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
   LogKeyStore:
     Type: AWS::KMS::Key
     Properties:
